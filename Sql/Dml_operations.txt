@@ -1,0 +1,99 @@
+14 Implement all SQL DML opeartions with  operators, functions, and set operator for given schema:
+Account(Acc_no, branch_name,balance)
+branch(branch_name,branch_city,assets)
+customer(cust_name,cust_street,cust_city)
+Depositor(cust_name,acc_no)
+Loan(loan_no,branch_name,amount)
+Borrower(cust_name,loan_no)
+
+Solve following query:
+Find the average account balance at each branch
+Find no. of depositors at each branch.
+Find the branches where average account balance > 12000.
+Find number of tuples in customer relation.
+
+
+
+
+CREATE DATABASE BankDB;
+USE BankDB;
+-- Create Tables
+CREATE TABLE branch (
+branch_name VARCHAR(50) PRIMARY KEY,
+branch_city VARCHAR(50),
+assets DECIMAL(15,2)
+);
+CREATE TABLE customer (
+cust_name VARCHAR(50) PRIMARY KEY,
+cust_street VARCHAR(100),
+cust_city VARCHAR(50)
+);
+CREATE TABLE account (
+acc_no INT PRIMARY KEY,
+branch_name VARCHAR(50),
+balance DECIMAL(10,2),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE depositor (
+cust_name VARCHAR(50),
+acc_no INT,
+PRIMARY KEY (cust_name, acc_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (acc_no) REFERENCES account(acc_no)
+);
+CREATE TABLE loan (
+loan_no INT PRIMARY KEY,
+branch_name VARCHAR(50),
+amount DECIMAL(10,2),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE borrower (
+cust_name VARCHAR(50),
+loan_no INT,
+PRIMARY KEY (cust_name, loan_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (loan_no) REFERENCES loan(loan_no)
+);
+-- Insert Sample Data
+INSERT INTO branch VALUES
+('Bengaluru', 'Bengaluru', 1000000),
+('Mumbai', 'Mumbai', 850000),
+('Delhi', 'Delhi', 950000);
+INSERT INTO customer VALUES
+('Ravi Kumar', 'MG Road', 'Bengaluru'),
+('Anjali Sharma', 'Park Street', 'Kolkata'),
+('Arjun Patel', 'Marine Drive', 'Mumbai'),
+('Sneha Gupta', 'Connaught Place', 'Delhi');
+INSERT INTO account VALUES
+(101, 'Bengaluru', 15000),
+(102, 'Mumbai', 12000),
+(103, 'Delhi', 13000),
+(104, 'Bengaluru', 11000);
+INSERT INTO depositor VALUES
+('Ravi Kumar', 101),
+('Arjun Patel', 102),
+('Sneha Gupta', 103),
+('Ravi Kumar', 104);
+INSERT INTO loan VALUES
+(201, 'Bengaluru', 500000),
+(202, 'Mumbai', 300000);
+INSERT INTO borrower VALUES
+('Ravi Kumar', 201),
+('Arjun Patel', 202);
+-- Queries
+-- 1. Find the average account balance at each branch
+SELECT branch_name, AVG(balance) AS avg_balance
+FROM account
+GROUP BY branch_name;
+-- 2. Find number of depositors at each branch
+SELECT a.branch_name, COUNT(DISTINCT d.cust_name) AS no_of_depositors
+FROM depositor d
+JOIN account a ON d.acc_no = a.acc_no
+GROUP BY a.branch_name;
+-- 3. Find branches where average account balance > 12000
+SELECT branch_name
+FROM account
+GROUP BY branch_name
+HAVING AVG(balance) > 12000;
+-- 4. Find number of tuples in customer relation
+SELECT COUNT(*) AS total_customers FROM customer;

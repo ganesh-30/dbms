@@ -1,0 +1,79 @@
+11 Design at least 10 SQL queries for suitable database application using SQL DML statements: all types of Join, Sub-Query and View.
+
+
+CREATE DATABASE BankDB;
+USE BankDB;
+-- Create Tables
+CREATE TABLE customer (
+CustomerID INT AUTO_INCREMENT PRIMARY KEY,
+Name VARCHAR(50) NOT NULL,
+Address VARCHAR(100),
+Phone VARCHAR(15)
+);
+CREATE TABLE branch (
+BranchID INT AUTO_INCREMENT PRIMARY KEY,
+BranchName VARCHAR(50) NOT NULL,
+Location VARCHAR(100)
+);
+CREATE TABLE account (
+AcctNo INT AUTO_INCREMENT PRIMARY KEY,
+Balance DECIMAL(10,2) DEFAULT 0,
+CustomerID INT,
+BranchID INT,
+FOREIGN KEY (CustomerID) REFERENCES customer(CustomerID),
+FOREIGN KEY (BranchID) REFERENCES branch(BranchID)
+);
+-- Insert Sample Data
+INSERT INTO customer (Name, Address, Phone) VALUES
+('Ravi Kumar', 'Bengaluru', '9876543210'),
+('Anjali Sharma', 'Kolkata', '9123456789'),
+('Arjun Patel', 'Mumbai', '9988776655');
+INSERT INTO branch (BranchName, Location) VALUES
+('Bengaluru Branch', 'Bengaluru'),
+('Kolkata Branch', 'Kolkata');
+INSERT INTO account (Balance, CustomerID, BranchID) VALUES
+(15000, 1, 1),
+(20000, 2, 2),
+(12000, 3, 1);
+-- Queries
+-- 1. Inner Join: Customer with their account balance and branch
+SELECT c.Name, a.Balance, b.BranchName
+FROM customer c
+JOIN account a ON c.CustomerID = a.CustomerID
+JOIN branch b ON a.BranchID = b.BranchID;
+-- 2. Left Join: All customers with their accounts (if any)
+SELECT c.Name, a.AcctNo, a.Balance
+FROM customer c
+LEFT JOIN account a ON c.CustomerID = a.CustomerID;
+-- 3. Subquery: Customers with accounts having balance > 15000
+SELECT Name
+FROM customer
+WHERE CustomerID IN (SELECT CustomerID FROM account WHERE Balance > 15000);
+-- 4. Subquery in SELECT: Customers and number of accounts
+SELECT c.Name,
+(SELECT COUNT(*) FROM account a WHERE a.CustomerID = c.CustomerID) AS AccountCount
+FROM customer c;
+-- 5. Create View: Customer account details
+CREATE VIEW CustomerAccountView AS
+SELECT c.Name, a.AcctNo, a.Balance
+FROM customer c
+JOIN account a ON c.CustomerID = a.CustomerID;
+-- 6. Query the view
+SELECT * FROM CustomerAccountView;
+-- 7. Aggregate: Total balance per branch
+SELECT b.BranchName, SUM(a.Balance) AS TotalBalance
+FROM account a
+JOIN branch b ON a.BranchID = b.BranchID
+GROUP BY b.BranchName;
+-- 8. Simple Inner Join: Accounts with branch info
+SELECT a.AcctNo, a.Balance, b.BranchName
+FROM account a
+JOIN branch b ON a.BranchID = b.BranchID;
+-- 9. Find accounts with balance above average balance
+SELECT AcctNo, Balance
+FROM account
+WHERE Balance > (SELECT AVG(Balance) FROM account);
+-- 10. List customers without accounts
+SELECT Name
+FROM customer
+WHERE CustomerID NOT IN (SELECT CustomerID FROM account);

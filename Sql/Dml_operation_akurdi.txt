@@ -1,0 +1,101 @@
+15 Implement all SQL DML opeartions with  operators, functions, and set operator for given schema:
+
+Account(Acc_no, branch_name,balance)
+branch(branch_name,branch_city,assets)
+customer(cust_name,cust_street,cust_city)
+Depositor(cust_name,acc_no)
+Loan(loan_no,branch_name,amount)
+Borrower(cust_name,loan_no)
+
+Create above tables with appropriate constraints like primary key, foreign key, check constrains, not null etc.
+
+Solve following query:
+
+Find the names of all branches in loan relation.
+Find all loan numbers for loans made at Akurdi Branch with loan amount > 12000.
+Find all customers who have a loan from bank. 
+Find their names,loan_no and loan amount.
+
+
+
+
+
+CREATE DATABASE BankDB;
+USE BankDB;
+-- Create Tables with Constraints
+CREATE TABLE branch (
+branch_name VARCHAR(50) PRIMARY KEY,
+branch_city VARCHAR(50) NOT NULL,
+assets DECIMAL(15,2) NOT NULL CHECK (assets >= 0)
+);
+CREATE TABLE customer (
+cust_name VARCHAR(50) PRIMARY KEY,
+cust_street VARCHAR(100),
+cust_city VARCHAR(50)
+);
+CREATE TABLE account (
+acc_no INT PRIMARY KEY,
+branch_name VARCHAR(50),
+balance DECIMAL(10,2) NOT NULL CHECK (balance >= 0),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE depositor (
+cust_name VARCHAR(50),
+acc_no INT,
+PRIMARY KEY (cust_name, acc_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (acc_no) REFERENCES account(acc_no)
+);
+CREATE TABLE loan (
+loan_no INT PRIMARY KEY,
+branch_name VARCHAR(50),
+amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE borrower (
+cust_name VARCHAR(50),
+loan_no INT,
+PRIMARY KEY (cust_name, loan_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (loan_no) REFERENCES loan(loan_no)
+);
+-- Insert Sample Data
+INSERT INTO branch VALUES
+('Akurdi', 'Pune', 1500000),
+('Bengaluru', 'Bengaluru', 1000000),
+('Mumbai', 'Mumbai', 850000);
+INSERT INTO customer VALUES
+('Ravi Kumar', 'MG Road', 'Bengaluru'),
+('Anjali Sharma', 'Park Street', 'Kolkata'),
+('Arjun Patel', 'Marine Drive', 'Mumbai'),
+('Sneha Gupta', 'Connaught Place', 'Delhi');
+INSERT INTO account VALUES
+(101, 'Akurdi', 15000),
+(102, 'Mumbai', 12000),
+(103, 'Bengaluru', 13000),
+(104, 'Akurdi', 11000);
+INSERT INTO depositor VALUES
+('Ravi Kumar', 101),
+('Arjun Patel', 102),
+('Sneha Gupta', 103),
+('Ravi Kumar', 104);
+INSERT INTO loan VALUES
+(201, 'Akurdi', 20000),
+(202, 'Mumbai', 30000),
+(203, 'Akurdi', 10000);
+INSERT INTO borrower VALUES
+('Ravi Kumar', 201),
+('Arjun Patel', 202),
+('Anjali Sharma', 203);
+-- Queries
+-- 1. Find the names of all branches in loan relation
+SELECT DISTINCT branch_name FROM loan;
+-- 2. Find all loan numbers for loans made at Akurdi Branch with loan amount > 12000
+SELECT loan_no FROM loan
+WHERE branch_name = 'Akurdi' AND amount > 12000;
+-- 3. Find all customers who have a loan from bank
+SELECT DISTINCT cust_name FROM borrower;
+-- 4. Find their names, loan_no and loan amount
+SELECT b.cust_name, l.loan_no, l.amount
+FROM borrower b
+JOIN loan l ON b.loan_no = l.loan_no;

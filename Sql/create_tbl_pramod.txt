@@ -1,0 +1,91 @@
+22 Create the following tables.
+1.	 Deposit (actno,cname,bname,amount,adate)
+2.	Branch (bname,city)
+3.	Customers (cname, city)
+4.	Borrow(loanno,cname,bname, amount)
+Add primary key and foreign key wherever applicable.
+Insert data into the above created tables.
+5.	Display loan no and loan amount of borrowers having the same branch as that of sunil. 
+6.	Display deposit and loan details of customers in the city where pramod is living. 
+7.	Display borrower names having deposit amount greater than 1000 and having the same living city as pramod.
+8.	Display branch and  living city of ‘ABC’
+
+
+
+
+CREATE DATABASE IF NOT EXISTS BankDB;
+USE BankDB;
+-- 4. Create Deposit table
+CREATE TABLE IF NOT EXISTS Deposit (
+actno INT PRIMARY KEY,
+cname VARCHAR(50) NOT NULL,
+bname VARCHAR(50) NOT NULL,
+amount DECIMAL(15,2) NOT NULL,
+adate DATE NOT NULL
+);
+-- 5. Create Branch table
+CREATE TABLE IF NOT EXISTS Branch (
+bname VARCHAR(50) PRIMARY KEY,
+city VARCHAR(50) NOT NULL
+);
+-- 6. Create Customers table
+CREATE TABLE IF NOT EXISTS Customers (
+cname VARCHAR(50) PRIMARY KEY,
+city VARCHAR(50) NOT NULL
+);
+-- 7. Create Borrow table
+CREATE TABLE IF NOT EXISTS Borrow (
+loanno INT PRIMARY KEY,
+cname VARCHAR(50) NOT NULL,
+bname VARCHAR(50) NOT NULL,
+amount DECIMAL(15,2) NOT NULL,
+FOREIGN KEY (cname) REFERENCES Customers(cname),
+FOREIGN KEY (bname) REFERENCES Branch(bname)
+);
+-- Insert sample data into Branch
+INSERT IGNORE INTO Branch VALUES
+('OBC', 'Mumbai'),
+('SBI', 'Pune'),
+('HDFC', 'Nagpur'),
+('BOB', 'Mumbai');
+-- Insert sample data into Customers
+INSERT IGNORE INTO Customers VALUES
+('Sunil', 'Mumbai'),
+('Pramod', 'Pune'),
+('Rakesh', 'Nagpur'),
+('ABC', 'Mumbai'),
+('Meena', 'Pune');
+-- Insert sample data into Deposit
+INSERT IGNORE INTO Deposit VALUES
+(1001, 'Sunil', 'OBC', 1500.00, '2025-05-01'),
+(1002, 'Pramod', 'SBI', 1200.00, '2025-04-20'),
+(1003, 'Meena', 'SBI', 800.00, '2025-03-15'),
+(1004, 'ABC', 'BOB', 2500.00, '2025-02-10');
+-- Insert sample data into Borrow
+INSERT IGNORE INTO Borrow VALUES
+(5001, 'Sunil', 'OBC', 500000.00),
+(5002, 'Rakesh', 'HDFC', 300000.00),
+(5003, 'Meena', 'SBI', 350000.00);
+-- 1. Display loan no and loan amount of borrowers having the same branch as that of Sunil
+SELECT br.loanno, br.amount
+FROM Borrow br
+JOIN Borrow sunil_borrow ON sunil_borrow.cname = 'Sunil'
+WHERE br.bname = sunil_borrow.bname;
+-- 2. Display deposit and loan details of customers in the city where Pramod is living
+SELECT d.cname, d.actno, d.amount AS DepositAmount, d.adate, b.loanno, b.amount AS LoanAmount
+FROM Customers c
+LEFT JOIN Deposit d ON c.cname = d.cname
+LEFT JOIN Borrow b ON c.cname = b.cname
+WHERE c.city = (SELECT city FROM Customers WHERE cname = 'Pramod');
+-- 3. Display borrower names having deposit amount greater than 1000 and having the same living city as Pramod
+SELECT DISTINCT b.cname
+FROM Borrow b
+JOIN Deposit d ON b.cname = d.cname
+JOIN Customers c ON b.cname = c.cname
+WHERE d.amount > 1000
+AND c.city = (SELECT city FROM Customers WHERE cname = 'Pramod');
+-- 4. Display branch and living city of ‘ABC’
+SELECT d.bname, c.city
+FROM Customers c
+JOIN Deposit d ON c.cname = d.cname
+WHERE c.cname = 'ABC';

@@ -1,0 +1,82 @@
+21 Create following tables:
+1.	 Deposit (actno,cname,bname,amount,adate)
+2.	Branch (bname,city)
+3.	Customers (cname, city)
+4.	Borrow(loanno,cname,bname, amount)
+
+Add primary key and foreign key wherever applicable. Insert data into the above created tables.
+5.	Display customer name having living city Bombay and branch city Nagpur
+6.	Display customer name having same living city as their branch city
+7.	Display customer name who are borrowers as well as depositors and having living city Nagpur.
+
+CREATE DATABASE BankDB;
+USE BankDB;
+-- 6. Create Deposit table
+CREATE TABLE IF NOT EXISTS Deposit (
+actno INT PRIMARY KEY,
+cname VARCHAR(50) NOT NULL,
+bname VARCHAR(50) NOT NULL,
+amount DECIMAL(15,2) NOT NULL,
+adate DATE NOT NULL
+);
+-- 7. Create Branch table
+CREATE TABLE IF NOT EXISTS Branch (
+bname VARCHAR(50) PRIMARY KEY,
+city VARCHAR(50) NOT NULL
+);
+-- 8. Create Customers table
+CREATE TABLE IF NOT EXISTS Customers (
+cname VARCHAR(50) PRIMARY KEY,
+city VARCHAR(50) NOT NULL
+);
+-- 9. Create Borrow table
+CREATE TABLE IF NOT EXISTS Borrow (
+loanno INT PRIMARY KEY,
+cname VARCHAR(50) NOT NULL,
+bname VARCHAR(50) NOT NULL,
+amount DECIMAL(15,2) NOT NULL,
+FOREIGN KEY (cname) REFERENCES Customers(cname),
+FOREIGN KEY (bname) REFERENCES Branch(bname)
+);
+-- Insert sample data into Branch
+INSERT IGNORE INTO Branch VALUES
+('OBC', 'Nagpur'),
+('SBI', 'Mumbai'),
+('HDFC', 'Nagpur'),
+('BOB', 'Bombay');
+-- Insert sample data into Customers
+INSERT IGNORE INTO Customers VALUES
+('Rahul', 'Bombay'),
+('Sneha', 'Nagpur'),
+('Amit', 'Nagpur'),
+('Neha', 'Mumbai'),
+('Kiran', 'Nagpur');
+-- Insert sample data into Deposit
+INSERT IGNORE INTO Deposit VALUES
+(1001, 'Rahul', 'BOB', 15000.00, '2025-05-01'),
+(1002, 'Sneha', 'HDFC', 20000.00, '2025-04-20'),
+(1003, 'Kiran', 'OBC', 12000.00, '2025-03-15'),
+(1004, 'Amit', 'SBI', 17000.00, '2025-02-10');
+-- Insert sample data into Borrow
+INSERT IGNORE INTO Borrow VALUES
+(5001, 'Sneha', 'HDFC', 500000.00),
+(5002, 'Amit', 'OBC', 300000.00),
+(5003, 'Kiran', 'OBC', 350000.00);
+-- 1. Display customer name having living city Bombay and branch city Nagpur
+SELECT DISTINCT c.cname
+FROM Customers c
+JOIN Deposit d ON c.cname = d.cname
+JOIN Branch b ON d.bname = b.bname
+WHERE c.city = 'Bombay' AND b.city = 'Nagpur';
+-- 2. Display customer name having same living city as their branch city
+SELECT DISTINCT c.cname
+FROM Customers c
+JOIN Deposit d ON c.cname = d.cname
+JOIN Branch b ON d.bname = b.bname
+WHERE c.city = b.city;
+-- 3. Display customer name who are borrowers as well as depositors and having living city Nagpur
+SELECT DISTINCT c.cname
+FROM Customers c
+JOIN Deposit d ON c.cname = d.cname
+JOIN Borrow br ON c.cname = br.cname
+WHERE c.city = 'Nagpur';

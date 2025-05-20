@@ -1,0 +1,43 @@
+10  Implement  SQL DDL statements which demonstrate the use of SQL objects such as Table, View, Index, Sequence, Synonym for following relational schema:
+
+Borrower(Rollin, Name, DateofIssue, NameofBook, Status)
+
+
+create database temp;
+use temp;
+
+-- Create the Borrower table with necessary constraints
+CREATE TABLE borrower (
+Rollin INT AUTO_INCREMENT PRIMARY KEY, -- Unique Roll number (acts like a sequence)
+Name VARCHAR(100) NOT NULL, -- Name of the borrower
+DateofIssue DATE NOT NULL, -- Book issue date
+NameofBook VARCHAR(100) NOT NULL, -- Title of the borrowed book
+Status ENUM('Issued', 'Returned') NOT NULL -- Book status (Issued/Returned)
+);
+-- Insert sample records into Borrower table
+INSERT INTO borrower (Name, DateofIssue, NameofBook, Status) VALUES
+('Amit Sharma', '2025-05-01', 'Data Structures in C', 'Issued'),
+('Pooja Rani', '2025-05-03', 'Operating Systems', 'Returned'),
+('Ravi Kumar', '2025-05-04', 'Database Management', 'Issued'),
+('Meena Verma', '2025-05-05', 'Computer Networks', 'Returned'),
+('Ankit Joshi', '2025-05-06', 'Python Programming', 'Issued');
+-- Create a view showing records where books are still issued
+CREATE VIEW IssuedBooks AS
+SELECT
+Rollin,
+Name,
+NameofBook,
+DateofIssue
+FROM
+borrower
+WHERE
+Status = 'Issued';
+-- Create index on NameofBook for quick lookup by book title
+CREATE INDEX idx_BookName ON borrower(NameofBook ASC);
+-- Simulate a synonym using a view (alias for full table)
+CREATE VIEW borrower_synonym AS
+SELECT * FROM borrower;
+-- Optional: View all records using the synonym
+ SELECT * FROM borrower_synonym;
+-- Optional: View only currently issued books
+ SELECT * FROM IssuedBooks;

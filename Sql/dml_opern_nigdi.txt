@@ -1,0 +1,105 @@
+19  Implement all SQL DML operations with  operators, functions, and set operator for given schema:
+
+Account(Acc_no, branch_name,balance)
+branch(branch_name,branch_city,assets)
+customer(cust_name,cust_street,cust_city)
+Depositor(cust_name,acc_no)
+Loan(loan_no,branch_name,amount)
+Borrower(cust_name,loan_no)
+
+Solve following query:
+
+Calculate total loan amount given by bank.
+Delete all loans with loan amount between 1300 and 1500.
+Delete all tuples at every branch located in Nigdi.
+
+CREATE DATABASE IF NOT EXISTS BankDB;
+USE BankDB;
+-- Create tables if not created already (with constraints)
+CREATE TABLE IF NOT EXISTS branch (
+branch_name VARCHAR(50) PRIMARY KEY,
+branch_city VARCHAR(50) NOT NULL,
+assets DECIMAL(15,2) NOT NULL CHECK (assets >= 0)
+);
+CREATE TABLE IF NOT EXISTS customer (
+cust_name VARCHAR(50) PRIMARY KEY,
+cust_street VARCHAR(100),
+cust_city VARCHAR(50)
+);
+CREATE TABLE IF NOT EXISTS account (
+acc_no INT PRIMARY KEY,
+branch_name VARCHAR(50) NOT NULL,
+balance DECIMAL(10,2) NOT NULL CHECK (balance >= 0),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE IF NOT EXISTS depositor (
+cust_name VARCHAR(50) NOT NULL,
+acc_no INT NOT NULL,
+PRIMARY KEY (cust_name, acc_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (acc_no) REFERENCES account(acc_no)
+);
+CREATE TABLE IF NOT EXISTS loan (
+loan_no INT PRIMARY KEY,
+branch_name VARCHAR(50) NOT NULL,
+amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE IF NOT EXISTS borrower (
+cust_name VARCHAR(50) NOT NULL,
+loan_no INT NOT NULL,
+PRIMARY KEY (cust_name, loan_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (loan_no) REFERENCES loan(loan_no)
+);
+-- Sample Data Inserts (optional if tables are empty)
+INSERT IGNORE INTO branch VALUES
+('Akurdi', 'Pune', 1500000),
+('Bengaluru', 'Bengaluru', 1000000),
+('Mumbai', 'Mumbai', 850000),
+('Nigdi', 'Pune', 700000);
+INSERT IGNORE INTO customer VALUES
+('Ravi Kumar', 'MG Road', 'Bengaluru'),
+('Anjali Sharma', 'Park Street', 'Kolkata'),
+('Arjun Patel', 'Marine Drive', 'Mumbai'),
+('Sneha Gupta', 'Connaught Place', 'Delhi'),
+('Vikram Singh', 'Residency Road', 'Chennai');
+INSERT IGNORE INTO account VALUES
+(101, 'Akurdi', 15000),
+(102, 'Mumbai', 12000),
+(103, 'Bengaluru', 13000),
+(104, 'Nigdi', 11000);
+INSERT IGNORE INTO depositor VALUES
+('Ravi Kumar', 101),
+('Arjun Patel', 102),
+('Sneha Gupta', 103),
+('Vikram Singh', 104);
+INSERT IGNORE INTO loan VALUES
+(201, 'Akurdi', 20000),
+(202, 'Mumbai', 1400),
+(203, 'Nigdi', 1350),
+(204, 'Akurdi', 10000);
+INSERT IGNORE INTO borrower VALUES
+('Ravi Kumar', 201),
+('Arjun Patel', 202),
+('Anjali Sharma', 203);
+-- Queries for the given problems
+-- 1. Calculate total loan amount given by bank
+SELECT SUM(amount) AS TotalLoanAmount FROM loan;
+-- 2. Delete all loans with loan amount between 1300 and 1500
+DELETE FROM loan WHERE amount BETWEEN 1300 AND 1500;
+-- 3. Delete all tuples at every branch located in Nigdi
+-- Step 1: Delete dependent tuples from borrower and depositor related to Nigdi branch
+DELETE b
+FROM borrower b
+JOIN loan l ON b.loan_no = l.loan_no
+WHERE l.branch_name = 'Nigdi';
+DELETE d
+FROM depositor d
+JOIN account a ON d.acc_no = a.acc_no
+WHERE a.branch_name = 'Nigdi';
+-- Step 2: Delete loans and accounts of Nigdi branch
+DELETE FROM loan WHERE branch_name = 'Nigdi';
+DELETE FROM account WHERE branch_name = 'Nigdi';
+-- Step 3: Delete the branch 'Nigdi' from branch table
+DELETE FROM branch WHERE branch_name = 'Nigdi';

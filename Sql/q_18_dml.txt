@@ -1,0 +1,105 @@
+18  Implement all SQL DML opeartions with  operators, functions, and set operator for given schema:
+
+Account(Acc_no, branch_name,balance)
+branch(branch_name,branch_city,assets)
+customer(cust_name,cust_street,cust_city)
+Depositor(cust_name,acc_no)
+Loan(loan_no,branch_name,amount)
+Borrower(cust_name,loan_no)
+
+Create above tables with appropriate constraints like primary key, foreign key, check constrains, not null etc.Solve following query:
+
+Find all customers who have an account or loan or both at bank.
+Find all customers who have both account and loan at bank.
+Find all customer who have account but no loan at the bank.
+Find average account balance at Akurdi branch.
+
+
+CREATE DATABASE BankDB;
+USE BankDB;
+-- Create Tables with constraints
+CREATE TABLE branch (
+branch_name VARCHAR(50) PRIMARY KEY,
+branch_city VARCHAR(50) NOT NULL,
+assets DECIMAL(15,2) NOT NULL CHECK (assets >= 0)
+);
+CREATE TABLE customer (
+cust_name VARCHAR(50) PRIMARY KEY,
+cust_street VARCHAR(100),
+cust_city VARCHAR(50)
+);
+CREATE TABLE account (
+acc_no INT PRIMARY KEY,
+branch_name VARCHAR(50) NOT NULL,
+balance DECIMAL(10,2) NOT NULL CHECK (balance >= 0),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE depositor (
+cust_name VARCHAR(50) NOT NULL,
+acc_no INT NOT NULL,
+PRIMARY KEY (cust_name, acc_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (acc_no) REFERENCES account(acc_no)
+);
+CREATE TABLE loan (
+loan_no INT PRIMARY KEY,
+branch_name VARCHAR(50) NOT NULL,
+amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+FOREIGN KEY (branch_name) REFERENCES branch(branch_name)
+);
+CREATE TABLE borrower (
+cust_name VARCHAR(50) NOT NULL,
+loan_no INT NOT NULL,
+PRIMARY KEY (cust_name, loan_no),
+FOREIGN KEY (cust_name) REFERENCES customer(cust_name),
+FOREIGN KEY (loan_no) REFERENCES loan(loan_no)
+);
+-- Insert Sample Data
+INSERT INTO branch VALUES
+('Akurdi', 'Pune', 1500000),
+('Bengaluru', 'Bengaluru', 1000000),
+('Mumbai', 'Mumbai', 850000);
+INSERT INTO customer VALUES
+('Ravi Kumar', 'MG Road', 'Bengaluru'),
+('Anjali Sharma', 'Park Street', 'Kolkata'),
+('Arjun Patel', 'Marine Drive', 'Mumbai'),
+('Sneha Gupta', 'Connaught Place', 'Delhi'),
+('Vikram Singh', 'Residency Road', 'Chennai');
+INSERT INTO account VALUES
+(101, 'Akurdi', 15000),
+(102, 'Mumbai', 12000),
+(103, 'Bengaluru', 13000),
+(104, 'Akurdi', 11000);
+INSERT INTO depositor VALUES
+('Ravi Kumar', 101),
+('Arjun Patel', 102),
+('Sneha Gupta', 103),
+('Vikram Singh', 104);
+INSERT INTO loan VALUES
+(201, 'Akurdi', 20000),
+(202, 'Mumbai', 30000),
+(203, 'Akurdi', 10000);
+INSERT INTO borrower VALUES
+('Ravi Kumar', 201),
+('Arjun Patel', 202),
+('Anjali Sharma', 203);
+-- Queries
+-- 1. Find all customers who have an account or loan or both at bank
+SELECT DISTINCT cust_name
+FROM (
+SELECT cust_name FROM depositor
+UNION
+SELECT cust_name FROM borrower
+) AS CustomersWithAccountOrLoan;
+-- 2. Find all customers who have both account and loan at bank
+SELECT DISTINCT cust_name
+FROM depositor
+WHERE cust_name IN (SELECT cust_name FROM borrower);
+-- 3. Find all customers who have account but no loan at the bank
+SELECT DISTINCT cust_name
+FROM depositor
+WHERE cust_name NOT IN (SELECT cust_name FROM borrower);
+-- 4. Find average account balance at Akurdi branch
+SELECT AVG(balance) AS AvgBalanceAtAkurdi
+FROM account
+WHERE branch_name = 'Akurdi';
