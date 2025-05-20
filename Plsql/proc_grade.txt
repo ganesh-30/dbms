@@ -1,0 +1,59 @@
+30  Write a Stored Procedure namely proc_Grade for the categorization of student. If marks scored by students in examination is <=1500 and marks>=990 then student will be placed in distinction category if marks scored are between 989 and900 category is first class, if marks 899 and 825 category is Higher Second Class .
+
+Consider Schema as Stud_Marks(name, total_marks) and Result(Roll,Name, Class) 
+
+-- 0) Create & switch to the student database
+DROP DATABASE IF EXISTS student;
+CREATE DATABASE student;
+USE student;
+
+-- 1) Clean up any old objects
+DROP PROCEDURE IF EXISTS proc_Grade;
+DROP TABLE     IF EXISTS Result;
+DROP TABLE     IF EXISTS Stud_Marks;
+
+-- 2) Create tables
+CREATE TABLE Stud_Marks (
+  Roll        INT        PRIMARY KEY,
+  Name        VARCHAR(50),
+  Total_Marks INT
+);
+
+CREATE TABLE Result (
+  Roll  INT        PRIMARY KEY,
+  Name  VARCHAR(50),
+  Class VARCHAR(30)
+);
+
+-- 3) Insert sample data
+INSERT INTO Stud_Marks VALUES
+ (1, 'Amit',  1450),
+ (2, 'Ravi',   920),
+ (3, 'Sneha',  850),
+ (4, 'Kiran',  700);
+
+-- 4) Stored Procedure to categorize
+DELIMITER //
+CREATE PROCEDURE proc_Grade()
+BEGIN
+  -- clear out previous run
+  DELETE FROM Result;
+
+  -- insert new classifications
+  INSERT INTO Result (Roll, Name, Class)
+    SELECT
+      Roll,
+      Name,
+      CASE
+        WHEN Total_Marks BETWEEN 990 AND 1500 THEN 'Distinction'
+        WHEN Total_Marks BETWEEN 900 AND 989  THEN 'First Class'
+        WHEN Total_Marks BETWEEN 825 AND 899  THEN 'Higher Second Class'
+        ELSE 'No Category'
+      END
+    FROM Stud_Marks;
+END//
+DELIMITER ;
+
+-- 5) Run it and show the output
+CALL proc_Grade();
+SELECT * FROM Result;

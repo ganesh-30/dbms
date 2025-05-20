@@ -1,0 +1,104 @@
+27  Create PL/SQL code block: Write a PL/SQL block of code for the following schema: 
+ Borrower(Rollin, Name, DateofIssue, NameofBook, Status) 
+ Fine(Roll_no,Date,Amt) 
+
+Solve following queries:
+1.	Accept roll_no & name of book from user. 
+2.	Check the number of days (from date of issue), if days are between 15 to 30 then fine amount will be Rs 5per day. 
+3.	If no. of days>30, per day fine will be Rs 50 per day & for days less than 30, Rs. 5 per day. 
+4.	After submitting the book, status will change from I to R. 
+5.	If condition of fine is true, then details will be stored into fine table. 
+
+Use of Control structure and Exception handling is mandatory.
+
+-- ──────── 0) Prep: Drop & recreate database
+DROP DATABASE IF EXISTS librarydb;
+CREATE DATABASE librarydb;
+USE librarydb;
+
+-- ──────── 1) Create tables
+CREATE TABLE Borrower (
+  Rollin       INT PRIMARY KEY,
+  Name         VARCHAR(50),
+  DateofIssue  DATE,
+  NameofBook   VARCHAR(100),
+  Status       CHAR(1)              -- 'I' issued, 'R' returned
+);
+
+CREATE TABLE Fine (
+  Roll_no INT,
+  FDate   DATE,
+  Amt     INT
+);
+
+-- ──────── 2) Sample data
+INSERT INTO Borrower VALUES
+ (1,'Ravi','2024-04-01','C Programming','I'),
+ (2,'Sneha','2024-04-20','Java',         'I');
+COMMIT;
+
+-- ──────── 3) Create the procedure
+DELIMITER //
+CREATE PROCEDURE proc_ReturnBook(
+  IN p_roll INT,
+  IN p_book VARCHAR(100)
+)
+BEGIN
+  DECLARE v_date   DATE;
+  DECLARE v_days   INT;
+  DECLARE v_fine   INT DEFAULT 0;
+  DECLARE notfound INT DEFAULT 0;
+
+  -- If SELECT finds no row, handler sets notfound=1
+  DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET notfound = 1;
+
+  -- Try to fetch DateofIssue
+  SET notfound = 0;
+  SELECT DateofIssue
+    INTO v_date
+    FROM Borrower
+   WHERE Rollin     = p_roll
+     AND NameofBook = p_book
+     AND Status     = 'I';
+
+  IF notfound = 1 THEN
+    -- No matching issued book
+    SELECT 'No such issued book found.' AS Message;
+  ELSE
+    -- Compute days elapsed
+    SET v_days = DATEDIFF(CURDATE(), v_date);
+
+    -- Fine rules
+    IF v_days > 30 THEN
+      SET v_fine = v_days * 50;
+    ELSEIF v_days >= 15 THEN
+      SET v_fine = v_days * 5;
+    END IF;
+
+    -- Mark book as returned
+    UPDATE Borrower
+      SET Status = 'R'
+     WHERE Rollin     = p_roll
+       AND NameofBook = p_book;
+
+    -- Record fine if any
+    IF v_fine > 0 THEN
+      INSERT INTO Fine (Roll_no, FDate, Amt)
+      VALUES (p_roll, CURDATE(), v_fine);
+    END IF;
+
+    -- Return feedback
+    SELECT
+      CONCAT('Book returned for Roll ', p_roll) AS Message,
+      v_days   AS DaysElapsed,
+      v_fine   AS FineAmount;
+  END IF;
+END//
+DELIMITER ;
+
+-- ──────── 4) Run it for Roll 1, “C Programming”
+CALL proc_ReturnBook(1,'C Programming');
+
+-- ──────── 5) Inspect tables
+SELECT * FROM Borrower;
+SELECT * FROM Fine;

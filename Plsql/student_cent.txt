@@ -1,0 +1,83 @@
+29  Writ a PL/SQL procedure to find the number of students ranging from 100-70%, 69-60%, 59-50% & below 49% in each course from the student_course table given by the procedure as parameter.
+Schema: Student (ROLL_NO ,COURSE, COURSE_COD ,SEM ,TOTAL_MARKS, PERCENTAGE)
+
+
+
+-- 1) Create schema & table
+CREATE DATABASE IF NOT EXISTS college;
+USE college;
+
+CREATE TABLE Student (
+  ROLL_NO     INT        PRIMARY KEY,
+  COURSE      VARCHAR(50),
+  COURSE_COD  VARCHAR(10),
+  SEM         INT,
+  TOTAL_MARKS INT,
+  PERCENTAGE  DECIMAL(5,2)
+);
+
+-- 2) Sample data
+INSERT INTO Student VALUES
+ (1, 'Math',      'MTH101', 1, 450, 75.00),
+ (2, 'Math',      'MTH101', 1, 420, 70.00),
+ (3, 'Math',      'MTH101', 1, 390, 65.00),
+ (4, 'Physics',   'PHY101', 1, 350, 55.00),
+ (5, 'Physics',   'PHY101', 1, 300, 48.00),
+ (6, 'Chemistry', 'CHM101', 1, 280, 62.00),
+ (7, 'Chemistry', 'CHM101', 1, 200, 40.00);
+COMMIT;
+
+-- 3) Procedure to count students in each band for a given course code
+DELIMITER //
+CREATE PROCEDURE Count_Students_By_Percentage(
+  IN p_course_code VARCHAR(10)
+)
+BEGIN
+  DECLARE v_100_70   INT DEFAULT 0;
+  DECLARE v_69_60    INT DEFAULT 0;
+  DECLARE v_59_50    INT DEFAULT 0;
+  DECLARE v_below_49 INT DEFAULT 0;
+
+  -- 70–100%
+  SELECT COUNT(*) 
+    INTO v_100_70
+    FROM Student
+   WHERE COURSE_COD = p_course_code
+     AND PERCENTAGE BETWEEN 70 AND 100;
+
+  -- 60–69.999%
+  SELECT COUNT(*) 
+    INTO v_69_60
+    FROM Student
+   WHERE COURSE_COD = p_course_code
+     AND PERCENTAGE >= 60
+     AND PERCENTAGE < 70;
+
+  -- 50–59.999%
+  SELECT COUNT(*) 
+    INTO v_59_50
+    FROM Student
+   WHERE COURSE_COD = p_course_code
+     AND PERCENTAGE >= 50
+     AND PERCENTAGE < 60;
+
+  -- below 50%
+  SELECT COUNT(*) 
+    INTO v_below_49
+    FROM Student
+   WHERE COURSE_COD = p_course_code
+     AND PERCENTAGE < 50;
+
+  -- Return a single result set with all four bands
+  SELECT
+    v_100_70   AS `70-100%`,
+    v_69_60    AS `60-69%`,
+    v_59_50    AS `50-59%`,
+    v_below_49 AS `< 50%`;
+END//
+DELIMITER ;
+
+-- 4) How to call it and see the counts:
+CALL Count_Students_By_Percentage('MTH101');
+CALL Count_Students_By_Percentage('PHY101');
+CALL Count_Students_By_Percentage('CHM101');

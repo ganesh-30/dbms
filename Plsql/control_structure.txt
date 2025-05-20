@@ -1,0 +1,146 @@
+9.PL/SQL code block: Use of Control structure and Exception handling is mandatory. Write a PL/SQL block of code for the following requirements:- 
+Schema: 
+1. Borrower(Rollin, Name, DateofIssue, NameofBook, Status) 
+2. Fine(Roll_no,Date,Amt) 
+3. Library (bid, bname, doi, status,noc)
+4. transaction (tid,bid, bname, status)
+1.	Accept roll_no & name of book from user. 
+2.	Check the number of days (from date of issue), if days are between 15 to 30 then fine amount will be Rs 5per day. 
+3.	If no. of days>30, per day fine will be Rs 50 per day & for days less than 30, Rs. 5 per day. 
+4.	After submitting the book, status will change from I to R.
+5.	Update the noc in library according to the transaction made.  Increase the noc if status is RETURN, Decrease noc if status is ISSUE.
+6.	If condition of fine is true, then details will be stored into fine table. 
+
+-- 0) Create & switch to librarydb
+DROP DATABASE IF EXISTS librarydb;
+CREATE DATABASE librarydb;
+USE librarydb;
+
+-- 1) Create tables
+CREATE TABLE Borrower (
+  Rollin       INT PRIMARY KEY,
+  Name         VARCHAR(50),
+  DateofIssue  DATE,
+  NameofBook   VARCHAR(100),
+  Status       CHAR(1)          -- 'I' for Issued, 'R' for Returned
+);
+
+CREATE TABLE Fine (
+  Roll_no  INT,
+  FDate    DATE,
+  Amt      INT
+);
+
+CREATE TABLE Library (
+  bid     INT PRIMARY KEY,
+  bname   VARCHAR(100),
+  doi     DATE,
+  status  CHAR(1),               -- 'I' or 'R'
+  noc     INT                    -- Number of copies
+);
+
+CREATE TABLE Txn (
+  tid     INT AUTO_INCREMENT PRIMARY KEY,
+  bid     INT,
+  bname   VARCHAR(100),
+  status  VARCHAR(10)            -- 'ISSUE' or 'RETURN'
+);
+
+-- 2) Insert sample data
+INSERT INTO Borrower VALUES
+ (101,'Rahul','2024-04-15','DBMS','I'),
+ (102,'Priya','2024-04-01','OS',  'I');
+
+INSERT INTO Library VALUES
+ (1,'DBMS','2020-01-01','I',2),
+ (2,'OS',  '2020-01-01','I',3);
+
+INSERT INTO Txn  (bid,bname,status) VALUES
+ (1,'DBMS','ISSUE'),
+ (2,'OS',  'ISSUE');
+
+COMMIT;
+
+-- 3) Procedure to process RETURN (with labeled block for LEAVE)
+DELIMITER //
+CREATE PROCEDURE proc_ProcessReturn(
+  IN p_roll   INT,
+  IN p_book   VARCHAR(100)
+)
+BEGIN
+  DECLARE v_date     DATE;
+  DECLARE v_status   CHAR(1);
+  DECLARE v_days     INT;
+  DECLARE v_fine     INT DEFAULT 0;
+  DECLARE v_bid      INT;
+  DECLARE v_noc      INT;
+  DECLARE notfound   INT DEFAULT 0;
+
+  -- if SELECT finds no row, handler sets notfound=1
+  DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET notfound = 1;
+
+  -- wrap logic in a labeled block so we can LEAVE
+  proc_exit: BEGIN
+    -- 1) fetch issue date & status
+    SELECT DateofIssue, Status
+      INTO v_date, v_status
+      FROM Borrower
+     WHERE Rollin = p_roll
+       AND NameofBook = p_book;
+    IF notfound = 1 THEN
+      SELECT 'No matching borrow record found.' AS Message;
+      LEAVE proc_exit;
+    END IF;
+
+    -- 2) days since issue
+    SET v_days = DATEDIFF(CURDATE(), v_date);
+
+    -- 3) fine logic
+    IF v_days BETWEEN 15 AND 30 THEN
+      SET v_fine = v_days * 5;
+    ELSEIF v_days > 30 THEN
+      SET v_fine = v_days * 50;
+    END IF;
+
+    -- 4) mark returned
+    UPDATE Borrower
+      SET Status = 'R'
+     WHERE Rollin = p_roll
+       AND NameofBook = p_book;
+
+    -- 5) update library copies
+    SELECT bid, noc INTO v_bid, v_noc
+      FROM Library
+     WHERE bname = p_book;
+    UPDATE Library
+      SET noc = v_noc + 1
+     WHERE bid = v_bid;
+
+    -- 6) log transaction
+    INSERT INTO Txn (bid, bname, status)
+      VALUES (v_bid, p_book, 'RETURN');
+
+    -- 7) record fine if any
+    IF v_fine > 0 THEN
+      INSERT INTO Fine (Roll_no, FDate, Amt)
+        VALUES (p_roll, CURDATE(), v_fine);
+    END IF;
+
+    -- 8) feedback
+    SELECT
+      CONCAT('Returned ', p_book, ' for Roll ', p_roll) AS Message,
+      v_days   AS DaysElapsed,
+      v_fine   AS FineAmount,
+      v_noc+1  AS NewCopies;
+  END proc_exit;
+END//
+DELIMITER ;
+
+-- 4) Run the procedure for Roll 101, book 'DBMS'
+CALL proc_ProcessReturn(101,'DBMS');
+
+-- 5) Inspect the tables
+SELECT * FROM Borrower;
+SELECT * FROM Library;
+SELECT * FROM Txn;
+SELECT * FROM Fine;

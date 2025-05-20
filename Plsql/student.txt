@@ -1,0 +1,101 @@
+7 Write PL/SQL Procedure & function to find class [Distinction (Total marks from 1499 to 990) ,First Class( 899 to 900) Higher Second (899 to 825) ,Second,Pass (824 to 750) ] of a student based on total marks from table Student (rollno, name, Marks1, Marks2, Marks3, Marks4, Marks5). 
+Use exception handling when negative marks are entered by user(Marks<0) or Marks more than 100 are entered by user.. Store the result into Result table recording  RollNo,total marks, and class for each student .
+
+-- 1) Create database & tables
+CREATE DATABASE IF NOT EXISTS StudentDB;
+USE StudentDB;
+
+CREATE TABLE Student (
+  rollno  INT PRIMARY KEY,
+  name    VARCHAR(100) NOT NULL,
+  Marks1  INT, Marks2 INT, Marks3 INT, Marks4 INT, Marks5 INT
+);
+
+CREATE TABLE Result (
+  rollno      INT PRIMARY KEY,
+  total_marks INT,
+  class       VARCHAR(20),
+  FOREIGN KEY (rollno) REFERENCES Student(rollno)
+);
+
+-- 2) Insert sample data (roll 4 & 5 have invalid marks)
+INSERT INTO Student VALUES
+ (1, 'Rahul Sharma',  95,  98,  92,  88,  94),
+ (2, 'Neha Gupta',    78,  85,  80,  75,  82),
+ (3, 'Amit Singh',    65,  70,  60,  55,  68),
+ (4, 'Pooja Patel',  102,  90,  85,  88,  91),  -- invalid (>100)
+ (5, 'Karan Verma',   -5,  88,  90,  84,  87);  -- invalid (<0)
+
+-- 3) Function to compute total (signals on any invalid mark)
+DELIMITER //
+CREATE FUNCTION calculate_total(p_roll INT) RETURNS INT
+  DETERMINISTIC
+BEGIN
+  DECLARE m1, m2, m3, m4, m5 INT;
+
+  SELECT Marks1, Marks2, Marks3, Marks4, Marks5
+    INTO m1, m2, m3, m4, m5
+    FROM Student
+   WHERE rollno = p_roll;
+
+  IF m1 < 0 OR m1 > 100
+   OR m2 < 0 OR m2 > 100
+   OR m3 < 0 OR m3 > 100
+   OR m4 < 0 OR m4 > 100
+   OR m5 < 0 OR m5 > 100 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Invalid marks detected';
+  END IF;
+
+  RETURN m1 + m2 + m3 + m4 + m5;
+END//
+DELIMITER ;
+
+-- 4) Procedure to classify & populate Result, skipping errors
+DELIMITER //
+CREATE PROCEDURE Calculate_Class()
+BEGIN
+  DECLARE done        INT DEFAULT 0;
+  DECLARE c_roll      INT;
+  DECLARE total_marks INT;
+  DECLARE class_res   VARCHAR(20);
+  DECLARE has_error   INT DEFAULT 0;
+
+  DECLARE cur CURSOR FOR SELECT rollno FROM Student;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND    SET done      = 1;
+  DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET has_error = 1;
+
+  OPEN cur;
+  read_loop: LOOP
+    FETCH cur INTO c_roll;
+    IF done = 1 THEN
+      LEAVE read_loop;
+    END IF;
+
+    SET has_error   = 0;
+    SET total_marks = calculate_total(c_roll);
+    IF has_error = 1 THEN
+      ITERATE read_loop;  -- skip student with invalid marks
+    END IF;
+
+    CASE
+      WHEN total_marks BETWEEN 990 AND 1499 THEN SET class_res = 'Distinction';
+      WHEN total_marks BETWEEN 900 AND 989  THEN SET class_res = 'First Class';
+      WHEN total_marks BETWEEN 825 AND 899  THEN SET class_res = 'Higher Second';
+      WHEN total_marks BETWEEN 750 AND 824  THEN SET class_res = 'Second';
+      ELSE                                  SET class_res = 'Pass';
+    END CASE;
+
+    INSERT INTO Result (rollno, total_marks, class)
+    VALUES (c_roll, total_marks, class_res)
+    ON DUPLICATE KEY UPDATE
+      total_marks = VALUES(total_marks),
+      class       = VALUES(class);
+  END LOOP;
+  CLOSE cur;
+END//
+DELIMITER ;
+
+-- 5) Execute & verify
+CALL Calculate_Class();
+SELECT * FROM Result;

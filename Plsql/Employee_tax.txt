@@ -1,0 +1,92 @@
+26  Write a PL/SQL code to calculate tax for an employee of an organization ABC and to display his/her name & tax, by creating a table under employee database as below:
+Employee_salary(emp_no,basic,HRA,DA,Total_deduction,net_salary,gross_Salary)
+
+
+-- 0) Create & switch to the employee database
+DROP DATABASE IF EXISTS employee;
+CREATE DATABASE employee;
+USE employee;
+
+-- 1) Create the table
+CREATE TABLE Employee_salary (
+  emp_no          INT        PRIMARY KEY,
+  basic           DECIMAL(12,2) NOT NULL,
+  HRA             DECIMAL(12,2) NOT NULL,
+  DA              DECIMAL(12,2) NOT NULL,
+  Total_deduction DECIMAL(12,2) NOT NULL,
+  net_salary      DECIMAL(14,2),
+  gross_salary    DECIMAL(14,2)
+);
+
+-- 2) Insert your sample rows
+INSERT INTO Employee_salary 
+  (emp_no, basic, HRA, DA, Total_deduction)
+VALUES
+  (101, 50000, 10000,  5000, 2000),
+  (102, 30000,  7000,  3000, 1500),
+  (103, 40000,  8000,  4000, 1800);
+
+-- 3) Stored procedure to compute gross/net and print Name & Tax
+DELIMITER //
+CREATE PROCEDURE proc_CalcTax()
+BEGIN
+  DECLARE done       INT DEFAULT 0;
+  DECLARE v_emp      INT;
+  DECLARE v_name     VARCHAR(50);
+  DECLARE v_basic    DECIMAL(12,2);
+  DECLARE v_HRA      DECIMAL(12,2);
+  DECLARE v_DA       DECIMAL(12,2);
+  DECLARE v_ded      DECIMAL(12,2);
+  DECLARE v_gross    DECIMAL(14,2);
+  DECLARE v_net      DECIMAL(14,2);
+  DECLARE v_tax      DECIMAL(14,2);
+
+  DECLARE cur CURSOR FOR
+    SELECT emp_no, basic, HRA, DA, Total_deduction
+      FROM Employee_salary;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND 
+    SET done = 1;
+
+  OPEN cur;
+  read_loop: LOOP
+    FETCH cur 
+      INTO v_emp, v_basic, v_HRA, v_DA, v_ded;
+    IF done = 1 THEN 
+      LEAVE read_loop;
+    END IF;
+
+    -- compute salaries
+    SET v_gross = v_basic + v_HRA + v_DA;
+    SET v_net   = v_gross - v_ded;
+
+    -- tax slabs
+    IF v_net <= 25000 THEN
+      SET v_tax = v_net * 0.05;
+    ELSEIF v_net <= 50000 THEN
+      SET v_tax = v_net * 0.10;
+    ELSE
+      SET v_tax = v_net * 0.15;
+    END IF;
+
+    -- update table
+    UPDATE Employee_salary
+      SET gross_salary = v_gross,
+          net_salary   = v_net
+     WHERE emp_no = v_emp;
+
+    -- fetch the employee’s (hard‑coded) name for display:
+    -- if you had a Name column, you’d select it; 
+    -- since your table has no Name field, we’ll display emp_no only:
+    SELECT 
+      CONCAT('Employee No: ', v_emp, 
+             ' ‑ Tax: ', FORMAT(v_tax,2)) AS Result;
+  END LOOP;
+  CLOSE cur;
+END//
+DELIMITER ;
+
+-- 4) Call it
+CALL proc_CalcTax();
+
+-- 5) Show final table state
+SELECT * FROM Employee_salary;

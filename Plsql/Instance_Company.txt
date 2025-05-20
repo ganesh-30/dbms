@@ -1,0 +1,136 @@
+13 Create the instance of the COMPANY which consists of the following tables:
+EMPLOYEE(Fname, Minit, Lname, Ssn, Bdate, Address, Sex, Salary,  Dno)
+DEPARTEMENT(Dname, Dno, Mgr_ssn, Mgr_start_date)
+DEPT_LOCATIONS(Dnumber, Dlocation)
+PROJECT(Pname, Pnumber, Plocation, Dno)
+WORKS_ON(Essn, Pno, Hours)
+DEPENDENT(Essn, Dependent_name, Sex, Bdate, Relationship)
+
+Perform following queries
+1.	For every project located in ‘Stafford’, list the project number, the controlling department number, and the department manager’s last name,address, and birth date.
+2.	Make a list of all project numbers for projects that involve an employee whose last name is ‘Smith’, either as a worker or as a manager of the department that controls the project.
+3.	Retrieve all employees whose address is in Houston, Texas.
+4.	Show the resulting salaries if every employee working on the ‘ProductX’ project is given a 10 percent raise.
+
+create  database company;
+use company;
+-- =========================
+-- 1. CREATE TABLES
+-- =========================
+
+CREATE TABLE EMPLOYEE (
+    Fname VARCHAR(20),
+    Minit CHAR(1),
+    Lname VARCHAR(20),
+    Ssn CHAR(9) PRIMARY KEY,
+    Bdate DATE,
+    Address VARCHAR(100),
+    Sex CHAR(1),
+    Salary DECIMAL(10,2),
+    Dno INT
+);
+
+CREATE TABLE DEPARTMENT (
+    Dname VARCHAR(20),
+    Dno INT PRIMARY KEY,
+    Mgr_ssn CHAR(9),
+    Mgr_start_date DATE
+);
+
+CREATE TABLE DEPT_LOCATIONS (
+    Dnumber INT,
+    Dlocation VARCHAR(50),
+    FOREIGN KEY (Dnumber) REFERENCES DEPARTMENT(Dno)
+);
+
+CREATE TABLE PROJECT (
+    Pname VARCHAR(50),
+    Pnumber INT PRIMARY KEY,
+    Plocation VARCHAR(50),
+    Dno INT,
+    FOREIGN KEY (Dno) REFERENCES DEPARTMENT(Dno)
+);
+
+CREATE TABLE WORKS_ON (
+    Essn CHAR(9),
+    Pno INT,
+    Hours DECIMAL(5,2),
+    FOREIGN KEY (Essn) REFERENCES EMPLOYEE(Ssn),
+    FOREIGN KEY (Pno) REFERENCES PROJECT(Pnumber)
+);
+
+CREATE TABLE DEPENDENT (
+    Essn CHAR(9),
+    Dependent_name VARCHAR(20),
+    Sex CHAR(1),
+    Bdate DATE,
+    Relationship VARCHAR(20),
+    FOREIGN KEY (Essn) REFERENCES EMPLOYEE(Ssn)
+);
+
+-- =========================
+-- 2. INSERT SAMPLE DATA
+-- =========================
+
+INSERT INTO EMPLOYEE VALUES 
+('John', 'B', 'Smith', '123456789', '1980-01-15', 'Houston, Texas', 'M', 50000, 1),
+('Jane', 'M', 'Doe', '987654321', '1985-05-25', 'Dallas, Texas', 'F', 60000, 2),
+('Mike', 'A', 'Johnson', '456789123', '1975-03-10', 'Austin, Texas', 'M', 75000, 1);
+
+INSERT INTO DEPARTMENT VALUES
+('Research', 1, '123456789', '2010-04-01'),
+('Development', 2, '987654321', '2015-01-01');
+
+INSERT INTO DEPT_LOCATIONS VALUES
+(1, 'Houston'),
+(2, 'Stafford');
+
+INSERT INTO PROJECT VALUES
+('ProductX', 10, 'Stafford', 1),
+('ProductY', 20, 'Dallas', 2);
+
+INSERT INTO WORKS_ON VALUES
+('123456789', 10, 20),
+('987654321', 10, 10),
+('456789123', 20, 25);
+
+INSERT INTO DEPENDENT VALUES
+('123456789', 'Anna', 'F', '2010-06-01', 'Daughter');
+
+-- =========================
+-- 3. REQUIRED QUERIES
+-- =========================
+
+-- Query 1: Projects in 'Stafford' with manager details
+SELECT P.Pnumber, P.Dno, E.Lname, E.Address, E.Bdate
+FROM PROJECT P
+JOIN DEPARTMENT D ON P.Dno = D.Dno
+JOIN EMPLOYEE E ON D.Mgr_ssn = E.Ssn
+WHERE P.Plocation = 'Stafford';
+
+-- Query 2: Projects involving 'Smith' (as worker or manager)
+-- As worker
+SELECT DISTINCT P.Pnumber
+FROM PROJECT P
+JOIN WORKS_ON W ON P.Pnumber = W.Pno
+JOIN EMPLOYEE E ON W.Essn = E.Ssn
+WHERE E.Lname = 'Smith'
+UNION
+-- As manager
+SELECT DISTINCT P.Pnumber
+FROM PROJECT P
+JOIN DEPARTMENT D ON P.Dno = D.Dno
+JOIN EMPLOYEE E ON D.Mgr_ssn = E.Ssn
+WHERE E.Lname = 'Smith';
+
+-- Query 3: Employees from Houston, Texas
+SELECT * FROM EMPLOYEE
+WHERE Address LIKE '%Houston, Texas%';
+
+-- Query 4: New salaries after 10% raise for employees on ‘ProductX’
+SELECT E.Fname, E.Lname, E.Salary,
+       E.Salary * 1.10 AS NewSalary
+FROM EMPLOYEE E
+JOIN WORKS_ON W ON E.Ssn = W.Essn
+JOIN PROJECT P ON W.Pno = P.Pnumber
+WHERE P.Pname = 'ProductX';

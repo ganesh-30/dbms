@@ -1,0 +1,73 @@
+28  Write a PL/SQL block of code using parameterized Cursor, that will merge the data available in the newly created table N_RollCall with the data available in the table O_RollCall. If the data in the first table already exist in the second table then that data should be skipped. 
+
+
+-- 0) Recreate the database
+DROP DATABASE IF EXISTS school;
+CREATE DATABASE school;
+USE school;
+
+-- 1) Create tables
+CREATE TABLE O_RollCall (
+  Roll_No INT PRIMARY KEY,
+  Name    VARCHAR(50)
+);
+
+CREATE TABLE N_RollCall (
+  Roll_No INT,
+  Name    VARCHAR(50)
+);
+
+-- 2) Insert sample data
+INSERT INTO O_RollCall VALUES
+  (1, 'Ravi'),
+  (2, 'Sneha');
+
+INSERT INTO N_RollCall VALUES
+  (2, 'Sneha'),   -- duplicate
+  (3, 'Ankit'),   -- new
+  (4, 'Meena');   -- new
+
+-- 3) Procedure to merge N_RollCall → O_RollCall
+DELIMITER //
+CREATE PROCEDURE merge_RollCall()
+BEGIN
+  DECLARE done    INT DEFAULT 0;
+  DECLARE v_roll  INT;
+  DECLARE v_name  VARCHAR(50);
+
+  DECLARE cur CURSOR FOR
+    SELECT Roll_No, Name FROM N_RollCall;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND 
+    SET done = 1;
+
+  OPEN cur;
+  read_loop: LOOP
+    FETCH cur INTO v_roll, v_name;
+    IF done = 1 THEN
+      LEAVE read_loop;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 
+        FROM O_RollCall 
+       WHERE Roll_No = v_roll
+    ) THEN
+      INSERT INTO O_RollCall VALUES (v_roll, v_name);
+      SELECT 
+        CONCAT('Inserted: Roll_No = ', v_roll, ', Name = ', v_name)
+        AS Message;
+    ELSE
+      SELECT 
+        CONCAT('Skipping duplicate Roll_No: ', v_roll)
+        AS Message;
+    END IF;
+  END LOOP;
+  CLOSE cur;
+END//
+DELIMITER ;
+
+-- 4) Run the merge
+CALL merge_RollCall();
+
+-- 5) Final state of O_RollCall
+SELECT * FROM O_RollCall;
