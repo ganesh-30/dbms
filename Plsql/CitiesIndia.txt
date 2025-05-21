@@ -1,0 +1,94 @@
+6 Create tables CitiesIndia(pincode,nameofcity,earliername,area,population,avgrainfall) 
+Categories(Type,pincode) Note:- Enter data only in CitiesIndia
+Write PL/SQL Procedure & function to find the population density of the cities. If the population density is above 3000 then Type of city must be entered as High Density in Category table. Between 2999 to 1000 as Moderate and below 999 as Low Density. Error must be displayed for population less than 10 or greater than 25718.
+
+
+-- Create database 
+CREATE DATABASE IF NOT EXISTS CityDB;
+USE CityDB;
+
+-- Create CitiesIndia table
+CREATE TABLE IF NOT EXISTS CitiesIndia (
+    pincode INT PRIMARY KEY,
+    nameofcity VARCHAR(100) NOT NULL,
+    earliername VARCHAR(100),
+    area FLOAT NOT NULL,
+    population INT NOT NULL,
+    avgrainfall FLOAT
+);
+
+-- Create Categories table
+CREATE TABLE IF NOT EXISTS Categories (
+    Type VARCHAR(20),
+    pincode INT PRIMARY KEY,
+    FOREIGN KEY (pincode) REFERENCES CitiesIndia(pincode)
+);
+
+-- Insert sample data into CitiesIndia
+INSERT INTO CitiesIndia VALUES
+(110001, 'Delhi', 'Dilli', 1484, 19000, 790),
+(400001, 'Mumbai', 'Bombay', 603, 12442, 2420),
+(560001, 'Bengaluru', 'Bangalore', 709, 8443, 970),
+(700001, 'Kolkata', 'Calcutta', 185, 4486, 1600),
+(600001, 'Chennai', NULL, 426, 4681, 1400);
+
+-- Function to calculate population density
+DELIMITER //
+CREATE FUNCTION population_density(in_pincode INT) RETURNS FLOAT
+DETERMINISTIC
+BEGIN
+    DECLARE dens FLOAT;
+    DECLARE pop INT;
+    DECLARE ar FLOAT;
+
+    SELECT population, area INTO pop, ar FROM CitiesIndia WHERE pincode = in_pincode;
+
+    IF pop < 10 OR pop > 25718 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Population out of valid range (10-25718)';
+    END IF;
+
+    SET dens = pop / ar;
+    RETURN dens;
+END //
+DELIMITER ;
+
+-- Procedure to update Categories table based on population density
+DELIMITER //
+CREATE PROCEDURE UpdateCityCategory()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE c_pincode INT;
+    DECLARE dens FLOAT;
+
+    DECLARE cur CURSOR FOR SELECT pincode FROM CitiesIndia;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO c_pincode;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+
+        SET dens = population_density(c_pincode);
+
+        DELETE FROM Categories WHERE pincode = c_pincode;
+
+        IF dens > 3000 THEN
+            INSERT INTO Categories VALUES ('High Density', c_pincode);
+        ELSEIF dens BETWEEN 1000 AND 2999 THEN
+            INSERT INTO Categories VALUES ('Moderate Density', c_pincode);
+        ELSE
+            INSERT INTO Categories VALUES ('Low Density', c_pincode);
+        END IF;
+    END LOOP;
+    CLOSE cur;
+END //
+DELIMITER ;
+
+-- Call the procedure to update categories
+CALL UpdateCityCategory();
+
+-- Display results
+SELECT * FROM CitiesIndia;
+SELECT * FROM Categories;
