@@ -1,0 +1,129 @@
+3: write a trigger for Library (bid, bname, doi, status) to update the number of copies (noc) according to ISSUE & RETURN status on update or insert query. Increase the noc if status is RETURN, Decrease noc if status is ISSUE in Library_Audit table(bid,bname,noc,timestampofquery). Write a trigger after update on Library such that if doi is more than 20 days ago then status should be FINE and in the Library_Audit table fine should be equal to no. of days * 10.
+
+-- 0) Create & switch to librarydb
+DROP DATABASE IF EXISTS librarydb;
+CREATE DATABASE librarydb;
+USE librarydb;
+
+-- 1) Define Library & Audit tables
+CREATE TABLE Library (
+  bid    INT PRIMARY KEY,
+  bname  VARCHAR(50),
+  doi    DATE,
+  status ENUM('ISSUE','RETURN','FINE') NOT NULL,
+  noc    INT NOT NULL
+);
+
+CREATE TABLE Library_Audit (
+  audit_id         INT AUTO_INCREMENT PRIMARY KEY,
+  bid              INT,
+  bname            VARCHAR(50),
+  noc              INT,
+  timestampofquery DATETIME,
+  fine             INT
+);
+
+-- 2) BEFORE INSERT OR UPDATE trigger: adjust noc & set 'FINE' if overdue
+DELIMITER //
+CREATE TRIGGER trg_lib_before_ins_upd
+BEFORE INSERT ON Library
+FOR EACH ROW
+BEGIN
+  DECLARE days_elapsed INT;
+
+  SET days_elapsed = DATEDIFF(CURRENT_DATE, NEW.doi);
+
+  -- Decrement/increment copies
+  IF NEW.status = 'ISSUE' THEN
+    SET NEW.noc = NEW.noc - 1;
+  ELSEIF NEW.status = 'RETURN' THEN
+    SET NEW.noc = NEW.noc + 1;
+  END IF;
+
+  -- Over‑20‑days overdue becomes 'FINE'
+  IF days_elapsed > 20 THEN
+    SET NEW.status = 'FINE';
+  END IF;
+END//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER trg_lib_before_update
+BEFORE UPDATE ON Library
+FOR EACH ROW
+BEGIN
+  DECLARE days_elapsed INT;
+
+  SET days_elapsed = DATEDIFF(CURRENT_DATE, NEW.doi);
+
+  -- If status changed to ISSUE/RETURN, adjust noc delta relative to OLD.noc
+  IF NEW.status = 'ISSUE' AND OLD.status <> 'ISSUE' THEN
+    SET NEW.noc = OLD.noc - 1;
+  ELSEIF NEW.status = 'RETURN' AND OLD.status <> 'RETURN' THEN
+    SET NEW.noc = OLD.noc + 1;
+  END IF;
+
+  -- If overdue, always mark FINE
+  IF days_elapsed > 20 THEN
+    SET NEW.status = 'FINE';
+  END IF;
+END//
+DELIMITER ;
+
+-- 3) AFTER INSERT OR UPDATE trigger: log audit row
+DELIMITER //
+CREATE TRIGGER trg_lib_after_ins_upd
+AFTER INSERT ON Library
+FOR EACH ROW
+BEGIN
+  DECLARE days_elapsed INT;
+  DECLARE the_fine INT DEFAULT NULL;
+
+  SET days_elapsed = DATEDIFF(CURRENT_DATE, NEW.doi);
+  IF NEW.status = 'FINE' THEN
+    SET the_fine = (days_elapsed - 20) * 10;
+  END IF;
+
+  INSERT INTO Library_Audit
+    (bid, bname, noc, timestampofquery, fine)
+  VALUES
+    (NEW.bid, NEW.bname, NEW.noc, NOW(), the_fine);
+END//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER trg_lib_after_update
+AFTER UPDATE ON Library
+FOR EACH ROW
+BEGIN
+  DECLARE days_elapsed INT;
+  DECLARE the_fine INT DEFAULT NULL;
+
+  SET days_elapsed = DATEDIFF(CURRENT_DATE, NEW.doi);
+  IF NEW.status = 'FINE' THEN
+    SET the_fine = (days_elapsed - 20) * 10;
+  END IF;
+
+  INSERT INTO Library_Audit
+    (bid, bname, noc, timestampofquery, fine)
+  VALUES
+    (NEW.bid, NEW.bname, NEW.noc, NOW(), the_fine);
+END//
+DELIMITER ;
+
+-- 4) Insert initial data (fires INSERT triggers)
+INSERT INTO Library VALUES
+ (101,'Mathematics','2025-04-10','ISSUE',  5),
+ (102,'Physics',    '2025-04-01','RETURN', 3),
+ (103,'Chemistry',  '2025-03-20','ISSUE',  7);
+
+-- 5) Now perform an UPDATE to test the UPDATE triggers
+UPDATE Library
+   SET status = 'RETURN'
+ WHERE bid = 101;
+
+-- 6) View Library contents
+SELECT * FROM Library\G
+
+-- 7) View Audit log
+SELECT * FROM Library_Audit\G

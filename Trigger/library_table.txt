@@ -1,0 +1,78 @@
+4: Write a database trigger on Library table. The System should keep track of the records that are being updated or deleted. The old value of updated or deleted records should be added in Library_Audit table. 
+
+
+
+-- 0) Recreate the database
+DROP DATABASE IF EXISTS librarydb;
+CREATE DATABASE librarydb;
+USE librarydb;
+
+-- 1) Create Library table
+CREATE TABLE Library (
+  bid      INT        PRIMARY KEY,
+  bname    VARCHAR(50),
+  doi      DATE,
+  status   VARCHAR(10),
+  noc      INT
+);
+
+-- 2) Create Library_Audit table
+CREATE TABLE Library_Audit (
+  audit_id        INT AUTO_INCREMENT PRIMARY KEY,
+  bid             INT,
+  bname           VARCHAR(50),
+  doi             DATE,
+  status          VARCHAR(10),
+  noc             INT,
+  action_type     VARCHAR(10),      -- 'UPDATE' or 'DELETE'
+  audit_timestamp DATETIME
+);
+
+-- 3) Insert sample data
+INSERT INTO Library VALUES
+  (101, 'Mathematics', '2025-04-10', 'ISSUE',  5),
+  (102, 'Physics',     '2025-04-01', 'RETURN', 3);
+
+-- 4a) Trigger: before any UPDATE on Library
+DELIMITER //
+CREATE TRIGGER trg_library_before_update
+BEFORE UPDATE ON Library
+FOR EACH ROW
+BEGIN
+  INSERT INTO Library_Audit
+    (bid, bname, doi, status, noc, action_type, audit_timestamp)
+  VALUES
+    (OLD.bid, OLD.bname, OLD.doi, OLD.status, OLD.noc,
+     'UPDATE', NOW());
+END//
+DELIMITER ;
+
+-- 4b) Trigger: before any DELETE on Library
+DELIMITER //
+CREATE TRIGGER trg_library_before_delete
+BEFORE DELETE ON Library
+FOR EACH ROW
+BEGIN
+  INSERT INTO Library_Audit
+    (bid, bname, doi, status, noc, action_type, audit_timestamp)
+  VALUES
+    (OLD.bid, OLD.bname, OLD.doi, OLD.status, OLD.noc,
+     'DELETE', NOW());
+END//
+DELIMITER ;
+
+-- 5) Exercise the triggers
+-- 5a) Update one row
+UPDATE Library
+   SET status = 'FINE', noc = noc - 1
+ WHERE bid = 101;
+
+-- 5b) Delete one row
+DELETE FROM Library
+ WHERE bid = 102;
+
+-- 6a) Final Library contents
+SELECT * FROM Library;
+
+-- 6b) Audit log
+SELECT * FROM Library_Audit;
