@@ -1,0 +1,113 @@
+31.Create database  :Citydetails(_id,name,area,population(total,Adults,seniorcitizens,sexratio), geography(avgtemp, avgrainfall, longitude, latitude))
+
+1. Find the total population in pune.
+2.  returns all city with total population greater than 10 million
+3. returns the average populations for each city.
+4.  returns the minimum and maximum cities by population for each city.
+
+
+
+// Step 1: Insert sample city data
+db.Citydetails.insertMany([
+  {
+    _id: 1,
+    name: "Pune",
+    area: 731,
+    population: {
+      total: 7600000,
+      Adults: 5400000,
+      seniorcitizens: 800000,
+      sexratio: 948
+    },
+    geography: {
+      avgtemp: 24,
+      avgrainfall: 722,
+      longitude: 73.8567,
+      latitude: 18.5204
+    }
+  },
+  {
+    _id: 2,
+    name: "Mumbai",
+    area: 603,
+    population: {
+      total: 12400000,
+      Adults: 9000000,
+      seniorcitizens: 1200000,
+      sexratio: 852
+    },
+    geography: {
+      avgtemp: 27,
+      avgrainfall: 2422,
+      longitude: 72.8777,
+      latitude: 19.0760
+    }
+  },
+  {
+    _id: 3,
+    name: "Nagpur",
+    area: 227,
+    population: {
+      total: 2400000,
+      Adults: 1700000,
+      seniorcitizens: 250000,
+      sexratio: 961
+    },
+    geography: {
+      avgtemp: 26,
+      avgrainfall: 1200,
+      longitude: 79.0882,
+      latitude: 21.1458
+    }
+  },
+  {
+    _id: 4,
+    name: "Delhi",
+    area: 1484,
+    population: {
+      total: 19000000,
+      Adults: 14000000,
+      seniorcitizens: 2200000,
+      sexratio: 850
+    },
+    geography: {
+      avgtemp: 25,
+      avgrainfall: 800,
+      longitude: 77.1025,
+      latitude: 28.7041
+    }
+  }
+]);
+
+// Step 2: Query – Find total population in Pune
+db.Citydetails.find(
+  { name: "Pune" },
+  { _id: 0, name: 1, "population.total": 1 }
+);
+
+// Step 3: Query – Cities with total population greater than 10 million
+db.Citydetails.find(
+  { "population.total": { $gt: 10000000 } },
+  { _id: 0, name: 1, "population.total": 1 }
+);
+
+// Step 4: Query – Average population across all cities
+db.Citydetails.aggregate([
+  {
+    $group: {
+      _id: null,
+      avg_population: { $avg: "$population.total" }
+    }
+  }
+]);
+
+// Step 5: Query – Minimum and maximum population among all cities
+db.Citydetails.aggregate([
+  {
+    $group: {
+      _id: null,
+      min_population: { $min: "$population.total" },
+      max_population: { $max: "$population.total" }
+    }
+  }
+]);

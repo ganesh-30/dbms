@@ -1,0 +1,119 @@
+16 Implement Map reduce operation with following example using MongoDB
+Students(stud_id, stud_name,stud_addr,stud_marks) 
+
+AND
+Write a PL/SQL code to calculate total and percentage of marks of the students in four subjects.
+
+PART A:
+// 0. (Optional) Switch to your database (or create it)
+use student;
+
+// 1. Create the Students collection (MongoDB creates it automatically on first insert)
+db.createCollection("Students");
+
+// 2. Insert sample data
+db.Students.insertMany([
+  { stud_id: 1, stud_name: "Amit Sharma",   stud_addr: "Delhi",      stud_marks: 320 },
+  { stud_id: 2, stud_name: "Sneha Patel",   stud_addr: "Ahmedabad",  stud_marks: 350 },
+  { stud_id: 3, stud_name: "Rajesh Kumar",  stud_addr: "Delhi",      stud_marks: 300 },
+  { stud_id: 4, stud_name: "Priya Singh",   stud_addr: "Bangalore",  stud_marks: 310 },
+  { stud_id: 5, stud_name: "Anjali Rao",    stud_addr: "Ahmedabad",  stud_marks: 340 }
+]);
+
+// 3. Define the map function
+var mapFunction = function() {
+  // emit city as key, marks as value
+  emit(this.stud_addr, this.stud_marks);
+};
+
+// 4. Define the reduce function
+var reduceFunction = function(key, values) {
+  // sum up all marks for this city
+  return Array.sum(values);
+};
+
+// 5. Run MapReduce, outputting into a new collection
+db.Students.mapReduce(
+  mapFunction,
+  reduceFunction,
+  {
+    out: "total_marks_by_city"
+  }
+);
+
+// 6. View the results
+db.total_marks_by_city.find().pretty();
+
+PART B:
+
+-- 0. Create and switch to your database
+DROP DATABASE IF EXISTS student;
+CREATE DATABASE student;
+USE student;
+
+-- 1. Drop & recreate table
+DROP TABLE IF EXISTS students;
+CREATE TABLE students (
+  stud_id    INT           PRIMARY KEY,
+  stud_name  VARCHAR(50),
+  marks_sub1 INT,
+  marks_sub2 INT,
+  marks_sub3 INT,
+  marks_sub4 INT
+);
+
+-- 2. Insert sample data
+INSERT INTO students VALUES
+  (1, 'Amit Sharma',   85, 78, 92, 88),
+  (2, 'Sneha Patel',   90, 85, 88, 91),
+  (3, 'Rajesh Kumar',  75, 80, 70, 68),
+  (4, 'Priya Singh',   88, 92, 95, 90),
+  (5, 'Anjali Rao',    80, 82, 79, 85);
+
+-- 3A. Simple SELECT approach
+SELECT
+  stud_id,
+  stud_name,
+  (marks_sub1 + marks_sub2 + marks_sub3 + marks_sub4) AS total_marks,
+  ROUND((marks_sub1 + marks_sub2 + marks_sub3 + marks_sub4) / 400 * 100, 2) AS percentage
+FROM students;
+
+-- 3B. Stored procedure with a cursor
+DROP PROCEDURE IF EXISTS calc_totals;
+DELIMITER $$
+CREATE PROCEDURE calc_totals()
+BEGIN
+  DECLARE done      INT DEFAULT FALSE;
+  DECLARE v_id      INT;
+  DECLARE v_name    VARCHAR(50);
+  DECLARE m1, m2, m3, m4 INT;
+  DECLARE v_total   INT;
+  DECLARE v_pct     DECIMAL(5,2);
+
+  DECLARE cur CURSOR FOR
+    SELECT stud_id, stud_name, marks_sub1, marks_sub2, marks_sub3, marks_sub4
+      FROM students;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+  OPEN cur;
+  read_loop: LOOP
+    FETCH cur INTO v_id, v_name, m1, m2, m3, m4;
+    IF done THEN
+      LEAVE read_loop;
+    END IF;
+    SET v_total = m1 + m2 + m3 + m4;
+    SET v_pct   = ROUND(v_total / 400 * 100, 2);
+    -- Print a row in the resultset
+    SELECT
+      v_id    AS stud_id,
+      v_name  AS stud_name,
+      v_total AS total_marks,
+      CONCAT(v_pct, '%') AS percentage;
+  END LOOP;
+  CLOSE cur;
+END$$
+DELIMITER ;
+
+-- 4. Call the procedure (if you want the cursor‐based output)
+CALL calc_totals();
+
